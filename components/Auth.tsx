@@ -21,10 +21,12 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
         try {
             if (isLogin) {
                 // Sign in
+                console.log('Attempting to sign in with email:', email);
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email,
                     password,
                 });
+                console.log('Sign in response:', { data, error });
                 if (error) throw error;
                 onAuthSuccess(data.user);
             } else {
@@ -41,34 +43,50 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
                 if (error) throw error;
                 
                 if (data.user) {
-                    // Create user profile in our users table
-                    const { error: profileError } = await supabase
-                        .from('users')
-                        .insert([
-                            {
-                                id: data.user.id,
-                                name: email.split('@')[0], // Use email prefix as default name
-                                age: 25,
-                                bio: '',
-                                photos: [],
-                                interests: [],
-                                gender: 'male',
-                                is_premium: false,
-                                email: email,
-                                preferences: { interestedIn: ['male', 'female'], ageRange: { min: 18, max: 99 } },
-                                earned_badge_ids: []
-                            }
-                        ]);
-                    
-                    if (profileError) {
-                        console.warn('Profile creation error:', profileError);
+                    if (data.session) {
+                        // User is immediately signed in (no email confirmation needed)
+                        // Create user profile in our users table
+                        const { error: profileError } = await supabase
+                            .from('users')
+                            .insert([
+                                {
+                                    id: data.user.id,
+                                    name: email.split('@')[0], // Use email prefix as default name
+                                    age: 25,
+                                    bio: '',
+                                    photos: [],
+                                    interests: [],
+                                    gender: 'male',
+                                    is_premium: false,
+                                    email: email,
+                                    preferences: { interestedIn: ['male', 'female'], ageRange: { min: 18, max: 99 } },
+                                    earned_badge_ids: []
+                                }
+                            ]);
+                        
+                        if (profileError) {
+                            console.warn('Profile creation error:', profileError);
+                        }
+                        
+                        onAuthSuccess(data.user);
+                    } else {
+                        // Email confirmation required
+                        setError('Please check your email and click the confirmation link to verify your account, then try logging in again.');
+                        return;
                     }
-                    
-                    onAuthSuccess(data.user);
+                } else if (data.user && !data.session) {
+                    // Email confirmation required
+                    setError('Please check your email and click the confirmation link to activate your account.');
                 }
             }
         } catch (error: any) {
-            setError(error.message);
+            if (error.message?.includes('Invalid login credentials')) {
+                setError('Invalid email or password. If you just signed up, please check your email for a verification link first.');
+            } else if (error.message?.includes('Email not confirmed')) {
+                setError('Please check your email and click the confirmation link to verify your account before logging in.');
+            } else {
+                setError(error.message);
+            }
         } finally {
             setLoading(false);
         }
