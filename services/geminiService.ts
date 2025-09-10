@@ -1,14 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { User, DateIdea, LocationSuggestion, Message, DateCategory } from '../types';
 
-// Ensure you have your API_KEY in the environment variables
-const API_KEY = process.env.API_KEY;
+// Get API key from Vite environment variables
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 if (!API_KEY) {
-  console.warn("API_KEY not found in environment variables. Gemini features will be disabled.");
+  console.warn("VITE_GEMINI_API_KEY not found in environment variables. Gemini features will be disabled.");
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
+const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
 export const enhanceDateDescription = async (idea: string): Promise<string> => {
   if (!API_KEY) {

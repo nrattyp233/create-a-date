@@ -1,3 +1,5 @@
+import React from 'react';
+
 export enum Gender {
   Male = 'male',
   Female = 'female',
@@ -19,6 +21,8 @@ export interface User {
   interests: string[];
   gender: Gender;
   isPremium: boolean;
+  isAdmin?: boolean;
+  email?: string;
   preferences: {
     interestedIn: Gender[];
     ageRange: { min: number; max: number };
@@ -67,5 +71,7 @@ export enum View {
   Matches,
   MyDates,
   Profile,
-  Chat
+  Chat,
+  PremiumManager,
+  Premium
 }

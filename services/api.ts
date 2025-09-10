@@ -1,16 +1,32 @@
 import { User, DatePost, Message } from '../types';
 import { supabase } from './supabaseClient';
 
+// Helper to ensure user is authenticated
+const ensureAuthenticated = async () => {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) {
+        throw new Error('User must be authenticated');
+    }
+    return user;
+};
+
 // --- READ operations
 export const getUsers = async (): Promise<User[]> => {
     const { data, error } = await supabase.from('users').select('*');
     if (error) {
-        console.error("Error fetching users:", error);
+        console.error("Error fetching users:", {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+            fullError: error
+        });
         throw error;
     }
     return (data || []).map(u => ({
         ...u,
         isPremium: u.is_premium,
+        isAdmin: u.id === 1, // Make user ID 1 the admin
         earnedBadgeIds: u.earned_badge_ids,
     }));
 };
@@ -104,7 +120,13 @@ export const sendMessage = async (senderId: number, receiverId: number, text: st
         .single();
         
     if (error) {
-        console.error("Error sending message:", error);
+        console.error("Error sending message:", {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+            fullError: error
+        });
         throw error;
     }
     return {
@@ -115,7 +137,9 @@ export const sendMessage = async (senderId: number, receiverId: number, text: st
 };
 
 export const updateUser = async (updatedUser: User): Promise<User> => {
-    const { id, isPremium, earnedBadgeIds, ...updateData } = updatedUser;
+    await ensureAuthenticated(); // Ensure user is authenticated
+    
+    const { id, isPremium, earnedBadgeIds, isAdmin, ...updateData } = updatedUser;
     const { data, error } = await supabase
         .from('users')
         .update({
@@ -128,13 +152,20 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
         .single();
     
     if (error) {
-        console.error("Error updating user:", error);
+        console.error("Error updating user:", {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+            fullError: error
+        });
         throw error;
     }
     return {
         ...data,
         isPremium: data.is_premium,
         earnedBadgeIds: data.earned_badge_ids,
+        isAdmin: data.id === 1, // Re-add isAdmin logic
     };
 };
 

@@ -1,11 +1,12 @@
 import React from 'react';
-import { View } from '../types';
-import { HeartIcon, UserIcon, CalendarIcon, PlusIcon, CogIcon, ChatIcon, ColorTheme } from '../constants';
+import { View, User } from '../types';
+import { HeartIcon, UserIcon, CalendarIcon, PlusIcon, CogIcon, ChatIcon, CrownIcon, ColorTheme } from '../constants';
 
 interface HeaderProps {
   currentView: View;
   setCurrentView: (view: View) => void;
   activeColorTheme: ColorTheme;
+  currentUser?: User;
 }
 
 const NavButton = ({ isActive, onClick, children, ariaLabel, activeColor, activeGlow }: { isActive: boolean; onClick: () => void; children: React.ReactNode; ariaLabel: string, activeColor: string, activeGlow: string }) => (
@@ -18,7 +19,7 @@ const NavButton = ({ isActive, onClick, children, ariaLabel, activeColor, active
   </button>
 );
 
-const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, activeColorTheme }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, activeColorTheme, currentUser }) => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-dark-2/80 backdrop-blur-sm">
       <div className="container mx-auto px-4 h-20 flex justify-between items-center">
@@ -40,6 +41,15 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, activeColo
           </NavButton>
           <NavButton isActive={currentView === View.MyDates} onClick={() => setCurrentView(View.MyDates)} ariaLabel="My dates" activeColor={activeColorTheme.bg} activeGlow={activeColorTheme.glow}>
             <UserIcon className="w-6 h-6" />
+          </NavButton>
+          <NavButton 
+            isActive={currentView === View.PremiumManager} 
+            onClick={() => setCurrentView(View.PremiumManager)} 
+            ariaLabel={currentUser?.isAdmin ? "Premium manager" : "Premium subscription"} 
+            activeColor={activeColorTheme.bg} 
+            activeGlow={activeColorTheme.glow}
+          >
+            <CrownIcon className="w-6 h-6" />
           </NavButton>
            <NavButton isActive={currentView === View.Profile} onClick={() => setCurrentView(View.Profile)} ariaLabel="Profile settings" activeColor={activeColorTheme.bg} activeGlow={activeColorTheme.glow}>
             <CogIcon className="w-6 h-6" />

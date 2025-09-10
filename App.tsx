@@ -18,6 +18,8 @@ import IcebreakerModal from './components/IcebreakerModal';
 import ProfileFeedbackModal from './components/ProfileFeedbackModal';
 import DatePlannerModal from './components/DatePlannerModal';
 import MonetizationModal from './components/MonetizationModal';
+import PremiumManager from './components/PremiumManager';
+import PremiumSubscription from './components/PremiumSubscription';
 import Auth from './components/Auth';
 
 // --- START: Onboarding Component ---
@@ -414,6 +416,13 @@ const MainApp: React.FC = () => {
                 return <MyDatesManager myDates={myDates} allUsers={users} onChooseApplicant={handleChooseApplicant} onDeleteDate={handleDeleteDate} gender={currentUser?.gender} onViewProfile={handleViewProfile} activeColorTheme={activeColorTheme} />;
             case View.Profile:
                 return <ProfileSettings currentUser={currentUser!} onSave={handleUpdateProfile} onGetFeedback={handleGetProfileFeedback} activeColorTheme={activeColorTheme} onSignOut={handleSignOut} onPremiumFeatureClick={handleOpenMonetizationModal} onSetAppBackground={handleSetAppBackground} />;
+            case View.PremiumManager:
+                // Only show admin panel if current user is admin, otherwise show personal premium page
+                return currentUser?.isAdmin 
+                    ? <PremiumManager users={users} onUpdateUser={handleUpdateProfile} />
+                    : <PremiumSubscription currentUser={currentUser!} onUpgrade={handleUpgradeToPremium} />;
+            case View.Premium:
+                return <PremiumSubscription currentUser={currentUser!} onUpgrade={handleUpgradeToPremium} />;
             default:
                 return <SwipeDeck users={usersForSwiping} currentUser={currentUser} onSwipe={handleSwipe} onRecall={handleRecall} canRecall={!!lastSwipedUserId} isLoading={isLoading} onPremiumFeatureClick={handleOpenMonetizationModal} weeklyChallenge={weeklyChallenge} onCompleteChallenge={handleCompleteChallenge}/>;
         }
@@ -429,7 +438,7 @@ const MainApp: React.FC = () => {
              style={{ backgroundImage: appBackground ? `linear-gradient(rgba(18, 18, 18, 0.7), rgba(18, 18, 18, 0.7)), url(${appBackground})` : 'none', backgroundColor: '#121212' }}
         >
             {showOnboarding && <OnboardingGuide onFinish={handleOnboardingComplete} />}
-            <Header currentView={currentView} setCurrentView={setCurrentView} activeColorTheme={activeColorTheme} />
+            <Header currentView={currentView} setCurrentView={setCurrentView} activeColorTheme={activeColorTheme} currentUser={currentUser} />
             <main className="pt-28 pb-10 px-4 container mx-auto">
                 {renderView()}
             </main>
