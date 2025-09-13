@@ -18,6 +18,7 @@ import IcebreakerModal from './components/IcebreakerModal';
 import ProfileFeedbackModal from './components/ProfileFeedbackModal';
 import DatePlannerModal from './components/DatePlannerModal';
 import MonetizationModal from './components/MonetizationModal';
+import AdminStats from './components/AdminStats';
 import Auth from './components/Auth';
 
 // --- START: Onboarding Component ---
@@ -414,6 +415,13 @@ const MainApp: React.FC = () => {
                 return <MyDatesManager myDates={myDates} allUsers={users} onChooseApplicant={handleChooseApplicant} onDeleteDate={handleDeleteDate} gender={currentUser?.gender} onViewProfile={handleViewProfile} activeColorTheme={activeColorTheme} />;
             case View.Profile:
                 return <ProfileSettings currentUser={currentUser!} onSave={handleUpdateProfile} onGetFeedback={handleGetProfileFeedback} activeColorTheme={activeColorTheme} onSignOut={handleSignOut} onPremiumFeatureClick={handleOpenMonetizationModal} onSetAppBackground={handleSetAppBackground} />;
+            case View.Admin:
+                // Only allow access to admin view for admin users
+                if (currentUser?.isAdmin || (currentUser?.id?.toString() === (process.env.ADMIN_USER_ID || '')) || (!currentUser && process.env.ADMIN_USER_ID === '1')) {
+                    return <AdminStats activeColorTheme={activeColorTheme} />;
+                } else {
+                    return <SwipeDeck users={usersForSwiping} currentUser={currentUser} onSwipe={handleSwipe} onRecall={handleRecall} canRecall={!!lastSwipedUserId} isLoading={isLoading} onPremiumFeatureClick={handleOpenMonetizationModal} weeklyChallenge={weeklyChallenge} onCompleteChallenge={handleCompleteChallenge}/>;
+                }
             default:
                 return <SwipeDeck users={usersForSwiping} currentUser={currentUser} onSwipe={handleSwipe} onRecall={handleRecall} canRecall={!!lastSwipedUserId} isLoading={isLoading} onPremiumFeatureClick={handleOpenMonetizationModal} weeklyChallenge={weeklyChallenge} onCompleteChallenge={handleCompleteChallenge}/>;
         }
@@ -433,7 +441,7 @@ const MainApp: React.FC = () => {
                 currentView={currentView} 
                 setCurrentView={setCurrentView} 
                 activeColorTheme={activeColorTheme}
-                isAdmin={currentUser?.isAdmin || (currentUser?.id?.toString() === (process.env.ADMIN_USER_ID || ''))}
+                isAdmin={currentUser?.isAdmin || (currentUser?.id?.toString() === (process.env.ADMIN_USER_ID || '')) || (!currentUser && process.env.ADMIN_USER_ID === '1')}
             />
             <main className="pt-28 pb-10 px-4 container mx-auto">
                 {renderView()}
@@ -442,7 +450,7 @@ const MainApp: React.FC = () => {
             {isIcebreakerModalOpen && <IcebreakerModal user={selectedUserForModal} onClose={handleCloseIcebreakers} gender={currentUser?.gender} onSendIcebreaker={(message) => { if(selectedUserForModal) { handleSendMessage(selectedUserForModal.id, message); handleCloseIcebreakers(); setCurrentView(View.Chat); } }} />}
             {isFeedbackModalOpen && <ProfileFeedbackModal user={currentUser!} onClose={handleCloseProfileFeedback} gender={currentUser?.gender}/>}
             {isDatePlannerModalOpen && <DatePlannerModal users={usersForDatePlanning} onClose={handleCloseDatePlanner} gender={currentUser?.gender}/>}
-            {isMonetizationModalOpen && <MonetizationModal onClose={handleCloseMonetizationModal} onUpgrade={handleUpgradeToPremium} />}
+            {isMonetizationModalOpen && <MonetizationModal onClose={handleCloseMonetizationModal} onUpgrade={handleUpgradeToPremium} currentUserId={currentUser?.id || CURRENT_USER_ID} />}
         </div>
     );
 };

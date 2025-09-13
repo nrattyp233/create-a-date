@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext';
 interface MonetizationModalProps {
     onClose: () => void;
     onUpgrade: () => void;
+    currentUserId: number;
 }
 
 const FeatureListItem: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -20,7 +21,7 @@ const FeatureListItem: React.FC<{ children: React.ReactNode }> = ({ children }) 
     </li>
 );
 
-const MonetizationModal: React.FC<MonetizationModalProps> = ({ onClose, onUpgrade }) => {
+const MonetizationModal: React.FC<MonetizationModalProps> = ({ onClose, onUpgrade, currentUserId }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [paypalOrderID, setPaypalOrderID] = useState<string | null>(null);
@@ -35,15 +36,17 @@ const MonetizationModal: React.FC<MonetizationModalProps> = ({ onClose, onUpgrad
             // order in your `paypal_orders` database table.
             //
             // Example of real code:
-            // const { data, error } = await supabase.functions.invoke('create-paypal-order');
+            // const { data, error } = await supabase.functions.invoke('create-paypal-order', {
+            //     body: { userId: currentUserId, amount: 10.00 }
+            // });
             // if (error) throw error;
             // setPaypalOrderID(data.orderID);
 
             // --- SIMULATION ---
             showToast('Connecting to payment service...', 'info');
             await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-            const mockOrderID = `SIMULATED_ORDER_${Date.now()}`;
-            console.log("Simulated PayPal order created:", mockOrderID);
+            const mockOrderID = `SIMULATED_ORDER_${currentUserId}_${Date.now()}`;
+            console.log("Simulated PayPal order created:", mockOrderID, "for user:", currentUserId);
             setPaypalOrderID(mockOrderID);
             // --- END SIMULATION ---
         } catch (err: any) {
@@ -66,16 +69,22 @@ const MonetizationModal: React.FC<MonetizationModalProps> = ({ onClose, onUpgrad
             // the `paypal_orders` table status to 'COMPLETED' and updates the
             // `users` table to set `is_premium = true`.
             //
+            // IMPORTANT: The payment verification happens on the server through PayPal webhook
+            // The user ID is included in the PayPal invoice_id field for verification
+            //
             // Example of real code:
             // const { error } = await supabase.functions.invoke('capture-paypal-order', {
-            //     body: { orderID: paypalOrderID },
+            //     body: { orderID: paypalOrderID, userId: currentUserId },
             // });
             // if (error) throw error;
             
             // --- SIMULATION ---
-            showToast('Verifying your payment...', 'info');
+            showToast('Verifying your payment of $10.00...', 'info');
             await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network delay
-            console.log("Simulated PayPal order captured:", paypalOrderID);
+            console.log("Simulated PayPal order captured:", paypalOrderID, "for user:", currentUserId, "amount: $10.00");
+            
+            // Simulate webhook verification - in real implementation, this happens server-side
+            showToast('Payment verified! Upgrading to Premium...', 'success');
             // --- END SIMULATION ---
 
             // Only if the server-side verification is successful, do we call onUpgrade.
@@ -143,7 +152,7 @@ const MonetizationModal: React.FC<MonetizationModalProps> = ({ onClose, onUpgrad
                                 ) : (
                                     <>
                                         <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M7.525 2.5h8.95c.588 0 .95.637.747 1.183l-1.99 5.308.204.075c1.23.454 2.055 1.55 2.055 2.822 0 1.65-1.34 2.99-2.99 2.99h-1.28c-.52 0-.964.388-1.03.905l-.33 2.64H8.818l.84-6.723c.06-.48-.31-.905-.79-.905H6.28c-1.65 0-2.99-1.34-2.99-2.99 0-1.47 1.058-2.69 2.455-2.93l.38-.065L7.525 2.5zm1.51 1.042H7.9l-1.12 2.986.32-.054c1.78-.3 3.32 1.01 3.32 2.805 0 .1-.01.2-.02.3l-.32 2.56h.97c.54 0 .99-.45.99-.99s-.45-.99-.99-.99h-.2L13.116 5.3l-4.08-1.758z"></path></svg>
-                                        <span>Pay with PayPal</span>
+                                        <span>Pay $10.00 with PayPal</span>
                                     </>
                                 )}
                             </button>
@@ -153,7 +162,7 @@ const MonetizationModal: React.FC<MonetizationModalProps> = ({ onClose, onUpgrad
                                 disabled={isLoading}
                                 className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors duration-300 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-wait"
                             >
-                                {isLoading ? 'Verifying Payment...' : 'Confirm Premium Purchase'}
+                                {isLoading ? 'Verifying Payment...' : 'Confirm Premium Purchase ($10.00)'}
                             </button>
                         )}
                     </div>

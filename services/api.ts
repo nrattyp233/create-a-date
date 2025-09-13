@@ -233,3 +233,56 @@ export const recallSwipe = async (userId: number, lastSwipedUserId: number): Pro
         throw error;
     }
 };
+
+// --- ADMIN operations
+export const getAdminStats = async (): Promise<{
+    totalRevenue: number;
+    recentPayments: Array<{
+        id: string;
+        userId: number;
+        amount: number;
+        date: string;
+        status: string;
+    }>;
+}> => {
+    try {
+        // Get payment data from orders table
+        const { data: payments, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('status', 'paid')
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        if (error) {
+            console.error("Error fetching admin stats:", error);
+            // Return default values if orders table doesn't exist yet
+            return {
+                totalRevenue: 0,
+                recentPayments: []
+            };
+        }
+
+        const totalRevenue = payments?.reduce((sum, payment) => sum + parseFloat(payment.amount || '0'), 0) || 0;
+        
+        const recentPayments = payments?.map(payment => ({
+            id: payment.order_id || payment.id,
+            userId: payment.user_id || 0,
+            amount: parseFloat(payment.amount || '0'),
+            date: payment.created_at || new Date().toISOString(),
+            status: payment.status || 'unknown'
+        })) || [];
+
+        return {
+            totalRevenue,
+            recentPayments
+        };
+    } catch (error) {
+        console.error("Error in getAdminStats:", error);
+        // Return default values on any error
+        return {
+            totalRevenue: 0,
+            recentPayments: []
+        };
+    }
+};
