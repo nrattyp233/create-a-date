@@ -6,6 +6,7 @@ interface HeaderProps {
   currentView: View;
   setCurrentView: (view: View) => void;
   activeColorTheme: ColorTheme;
+  isAdmin?: boolean;
 }
 
 const NavButton = ({ isActive, onClick, children, ariaLabel, activeColor, activeGlow }: { isActive: boolean; onClick: () => void; children: React.ReactNode; ariaLabel: string, activeColor: string, activeGlow: string }) => (
@@ -18,13 +19,20 @@ const NavButton = ({ isActive, onClick, children, ariaLabel, activeColor, active
   </button>
 );
 
-const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, activeColorTheme }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, activeColorTheme, isAdmin }) => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-dark-2/80 backdrop-blur-sm">
       <div className="container mx-auto px-4 h-20 flex justify-between items-center">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-emerald-500 text-transparent bg-clip-text">
-          Create-A-Date
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-emerald-500 text-transparent bg-clip-text">
+            Create-A-Date
+          </h1>
+          {isAdmin && (
+            <span className="px-2 py-0.5 text-xs rounded-full border border-amber-400 text-amber-300 bg-amber-500/10">
+              Admin
+            </span>
+          )}
+        </div>
         <nav className="flex items-center space-x-1 bg-dark-3 p-1 rounded-full">
           <NavButton isActive={currentView === View.Swipe} onClick={() => setCurrentView(View.Swipe)} ariaLabel="Swipe profiles" activeColor={activeColorTheme.bg} activeGlow={activeColorTheme.glow}>
             <HeartIcon className="w-6 h-6" />

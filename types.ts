@@ -1,3 +1,5 @@
+import type { FC } from 'react';
+
 export enum Gender {
   Male = 'male',
   Female = 'female',
@@ -7,7 +9,7 @@ export interface Badge {
   id: 'first_date' | 'adventurous' | 'starter' | 'prolific_planner';
   name: string;
   description: string;
-  icon: React.FC<{ className?: string }>;
+  icon: FC<{ className?: string }>;
 }
 
 export interface User {
@@ -19,6 +21,7 @@ export interface User {
   interests: string[];
   gender: Gender;
   isPremium: boolean;
+  isAdmin?: boolean;
   preferences: {
     interestedIn: Gender[];
     ageRange: { min: number; max: number };
