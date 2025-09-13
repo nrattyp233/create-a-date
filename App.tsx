@@ -429,7 +429,12 @@ const MainApp: React.FC = () => {
              style={{ backgroundImage: appBackground ? `linear-gradient(rgba(18, 18, 18, 0.7), rgba(18, 18, 18, 0.7)), url(${appBackground})` : 'none', backgroundColor: '#121212' }}
         >
             {showOnboarding && <OnboardingGuide onFinish={handleOnboardingComplete} />}
-            <Header currentView={currentView} setCurrentView={setCurrentView} activeColorTheme={activeColorTheme} />
+            <Header 
+                currentView={currentView} 
+                setCurrentView={setCurrentView} 
+                activeColorTheme={activeColorTheme}
+                isAdmin={currentUser?.isAdmin || (currentUser?.id?.toString() === (process.env.ADMIN_USER_ID || ''))}
+            />
             <main className="pt-28 pb-10 px-4 container mx-auto">
                 {renderView()}
             </main>

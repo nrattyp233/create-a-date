@@ -8,9 +8,10 @@ export const getUsers = async (): Promise<User[]> => {
         console.error("Error fetching users:", error);
         throw error;
     }
-    return (data || []).map(u => ({
+        return (data || []).map(u => ({
         ...u,
         isPremium: u.is_premium,
+            isAdmin: u.is_admin,
         earnedBadgeIds: u.earned_badge_ids,
     }));
 };
@@ -121,6 +122,7 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
         .update({
             ...updateData,
             is_premium: isPremium,
+                is_admin: updatedUser.isAdmin,
             earned_badge_ids: earnedBadgeIds,
         })
         .eq('id', id)
@@ -134,6 +136,7 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
     return {
         ...data,
         isPremium: data.is_premium,
+            isAdmin: data.is_admin,
         earnedBadgeIds: data.earned_badge_ids,
     };
 };
