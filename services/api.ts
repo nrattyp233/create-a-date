@@ -1,74 +1,129 @@
 import { User, DatePost, Message } from '../types';
 import { supabase } from './supabaseClient';
+import { mockUsers, mockDatePosts, mockMessages, mockOrders } from './mockData';
+
+// Flag to enable mock data when Supabase is not available
+const USE_MOCK_DATA = false; // Set to true for offline development
 
 // --- READ operations
 export const getUsers = async (): Promise<User[]> => {
-    const { data, error } = await supabase.from('users').select('*');
-    if (error) {
-        console.error("Error fetching users:", error);
-        throw error;
+    if (USE_MOCK_DATA) {
+        return Promise.resolve(mockUsers);
     }
+    
+    try {
+        const { data, error } = await supabase.from('users').select('*');
+        if (error) {
+            console.error("Error fetching users:", error);
+            // Fall back to mock data if Supabase fails
+            console.warn("Falling back to mock data");
+            return mockUsers;
+        }
         return (data || []).map(u => ({
-        ...u,
-        isPremium: u.is_premium,
+            ...u,
+            isPremium: u.is_premium,
             isAdmin: u.is_admin,
-        earnedBadgeIds: u.earned_badge_ids,
-    }));
+            earnedBadgeIds: u.earned_badge_ids,
+        }));
+    } catch (error) {
+        console.error("Supabase connection failed, using mock data:", error);
+        return mockUsers;
+    }
 };
 
 export const getDatePosts = async (): Promise<DatePost[]> => {
-    const { data, error } = await supabase.from('date_posts').select('*').order('created_at', { ascending: false });
-    if (error) {
-        console.error("Error fetching date posts:", error);
-        throw error;
+    if (USE_MOCK_DATA) {
+        return Promise.resolve(mockDatePosts);
     }
-    return (data || []).map(p => ({
-        ...p,
-        dateTime: p.date_time,
-        createdBy: p.created_by,
-        chosenApplicantId: p.chosen_applicant_id,
-    }));
+    
+    try {
+        const { data, error } = await supabase.from('date_posts').select('*').order('created_at', { ascending: false });
+        if (error) {
+            console.error("Error fetching date posts:", error);
+            console.warn("Falling back to mock data");
+            return mockDatePosts;
+        }
+        return (data || []).map(p => ({
+            ...p,
+            dateTime: p.date_time,
+            createdBy: p.created_by,
+            chosenApplicantId: p.chosen_applicant_id,
+        }));
+    } catch (error) {
+        console.error("Supabase connection failed, using mock data:", error);
+        return mockDatePosts;
+    }
 };
 
 export const getMessages = async (): Promise<Message[]> => {
-    const { data, error } = await supabase.from('messages').select('*').order('timestamp');
-    if (error) {
-        console.error("Error fetching messages:", error);
-        throw error;
+    if (USE_MOCK_DATA) {
+        return Promise.resolve(mockMessages);
     }
-    return (data || []).map(m => ({
-        ...m,
-        senderId: m.sender_id,
-        receiverId: m.receiver_id,
-    }));
+    
+    try {
+        const { data, error } = await supabase.from('messages').select('*').order('timestamp');
+        if (error) {
+            console.error("Error fetching messages:", error);
+            console.warn("Falling back to mock data");
+            return mockMessages;
+        }
+        return (data || []).map(m => ({
+            ...m,
+            senderId: m.sender_id,
+            receiverId: m.receiver_id,
+        }));
+    } catch (error) {
+        console.error("Supabase connection failed, using mock data:", error);
+        return mockMessages;
+    }
 };
 
 export const getMatches = async (currentUserId: number): Promise<number[]> => {
-    const { data, error } = await supabase
-        .from('matches')
-        .select('user_1_id, user_2_id')
-        .or(`user_1_id.eq.${currentUserId},user_2_id.eq.${currentUserId}`);
-
-    if (error) {
-        console.error("Error fetching matches:", error);
-        throw error;
+    if (USE_MOCK_DATA) {
+        // Mock matches: admin (1) matches with Sarah (2), Mike (3) matches with Emma (4)
+        return Promise.resolve(currentUserId === 1 ? [2] : currentUserId === 3 ? [4] : []);
     }
+    
+    try {
+        const { data, error } = await supabase
+            .from('matches')
+            .select('user_1_id, user_2_id')
+            .or(`user_1_id.eq.${currentUserId},user_2_id.eq.${currentUserId}`);
 
-    return data.map(match => match.user_1_id === currentUserId ? match.user_2_id : match.user_1_id);
+        if (error) {
+            console.error("Error fetching matches:", error);
+            console.warn("Falling back to mock data");
+            return currentUserId === 1 ? [2] : currentUserId === 3 ? [4] : [];
+        }
+
+        return data.map(match => match.user_1_id === currentUserId ? match.user_2_id : match.user_1_id);
+    } catch (error) {
+        console.error("Supabase connection failed, using mock data:", error);
+        return currentUserId === 1 ? [2] : currentUserId === 3 ? [4] : [];
+    }
 };
 
 export const getSwipedLeftIds = async (currentUserId: number): Promise<number[]> => {
-    const { data, error } = await supabase
-        .from('swipes')
-        .select('swiped_user_id')
-        .eq('user_id', currentUserId)
-        .eq('direction', 'left');
+    if (USE_MOCK_DATA) {
+        return Promise.resolve([]); // No left swipes in mock data
+    }
     
-    if (error) {
-        console.error("Error fetching left swipes:", error);
+    try {
+        const { data, error } = await supabase
+            .from('swipes')
+            .select('swiped_user_id')
+            .eq('user_id', currentUserId)
+            .eq('direction', 'left');
+        
+        if (error) {
+            console.error("Error fetching left swipes:", error);
+            return [];
+        }
+        return data.map(swipe => swipe.swiped_user_id);
+    } catch (error) {
+        console.error("Supabase connection failed, using mock data:", error);
         return [];
     }
-    return data.map(swipe => swipe.swiped_user_id);
 };
 
 

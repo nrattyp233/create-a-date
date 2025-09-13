@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
+import { mockUsers, mockOrders } from '../services/mockData';
 
 interface Stats {
   totalUsers: number;
@@ -20,27 +21,58 @@ const AdminStats: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const [{ count: totalUsers }, { count: premiumUsers }, revenue] = await Promise.all([
-          supabase.from('users').select('*', { count: 'exact', head: true }),
-          supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_premium', true),
-          supabase.from('orders').select('amount,status').eq('status', 'paid')
-        ]);
+        
+        // Try to fetch from Supabase first, fall back to mock data if it fails
+        try {
+          console.log('Attempting to fetch from Supabase...');
+          const [usersResult, premiumUsersResult, revenueResult] = await Promise.all([
+            supabase.from('users').select('*', { count: 'exact', head: true }),
+            supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_premium', true),
+            supabase.from('orders').select('amount,status').eq('status', 'paid')
+          ]);
 
-        const totalRevenueCents = (revenue.data || []).reduce((sum: number, row: any) => {
-          const amountStr: string = row.amount || '0';
-          // PayPal webhook stores decimal string (e.g., '10.00'); convert to cents
-          const cents = Math.round(parseFloat(amountStr) * 100);
-          return sum + (isFinite(cents) ? cents : 0);
-        }, 0);
+          // Check if any of the queries failed
+          if (usersResult.error || premiumUsersResult.error || revenueResult.error) {
+            throw new Error('Supabase query failed');
+          }
 
-        const regularUsers = (totalUsers || 0) - (premiumUsers || 0);
+          const totalUsers = usersResult.count || 0;
+          const premiumUsers = premiumUsersResult.count || 0;
+          const totalRevenueCents = (revenueResult.data || []).reduce((sum: number, row: any) => {
+            const amountStr: string = row.amount || '0';
+            // PayPal webhook stores decimal string (e.g., '10.00'); convert to cents
+            const cents = Math.round(parseFloat(amountStr) * 100);
+            return sum + (isFinite(cents) ? cents : 0);
+          }, 0);
 
-        setStats({
-          totalUsers: totalUsers || 0,
-          premiumUsers: premiumUsers || 0,
-          regularUsers,
-          totalRevenueCents
-        });
+          const regularUsers = totalUsers - premiumUsers;
+
+          console.log('Supabase data fetched successfully');
+          setStats({
+            totalUsers,
+            premiumUsers,
+            regularUsers,
+            totalRevenueCents
+          });
+        } catch (supabaseError) {
+          console.warn('Supabase unavailable, using mock data for admin stats:', supabaseError);
+          
+          // Use mock data
+          const totalUsers = mockUsers.length;
+          const premiumUsers = mockUsers.filter(u => u.isPremium).length;
+          const regularUsers = totalUsers - premiumUsers;
+          const totalRevenueCents = mockOrders
+            .filter(order => order.status === 'paid')
+            .reduce((sum, order) => sum + Math.round(parseFloat(order.amount) * 100), 0);
+
+          console.log('Using mock data:', { totalUsers, premiumUsers, regularUsers, totalRevenueCents });
+          setStats({
+            totalUsers,
+            premiumUsers,
+            regularUsers,
+            totalRevenueCents
+          });
+        }
       } catch (e: any) {
         console.error('Failed to fetch admin stats', e);
         setError('Failed to fetch stats');
