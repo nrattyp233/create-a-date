@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { CrownIcon, XIcon } from '../constants';
 import { useToast } from '../contexts/ToastContext';
-// We would use the Supabase client to call our Edge Functions
-// import { supabase } from '../services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 
 interface MonetizationModalProps {
     onClose: () => void;
@@ -30,22 +29,19 @@ const MonetizationModal: React.FC<MonetizationModalProps> = ({ onClose, onUpgrad
         setIsLoading(true);
         setError(null);
         try {
-            // STEP 1: Call a server-side function to create a PayPal order.
-            // This function would securely communicate with PayPal and store a 'PENDING'
-            // order in your `paypal_orders` database table.
-            //
-            // Example of real code:
-            // const { data, error } = await supabase.functions.invoke('create-paypal-order');
-            // if (error) throw error;
-            // setPaypalOrderID(data.orderID);
-
-            // --- SIMULATION ---
-            showToast('Connecting to payment service...', 'info');
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-            const mockOrderID = `SIMULATED_ORDER_${Date.now()}`;
-            console.log("Simulated PayPal order created:", mockOrderID);
-            setPaypalOrderID(mockOrderID);
-            // --- END SIMULATION ---
+            // Call server-side function to create a PayPal order
+            const { data, error } = await supabase.functions.invoke('create-paypal-order', {
+                body: { amount: 10.00 } // $10 for premium upgrade
+            });
+            
+            if (error) throw error;
+            
+            showToast('Payment order created. Redirecting to PayPal...', 'info');
+            setPaypalOrderID(data.orderID);
+            
+            // In a real implementation, redirect to PayPal for payment
+            // window.location.href = data.approvalUrl;
+            
         } catch (err: any) {
             console.error("Failed to create PayPal order:", err);
             const errorMessage = "Could not connect to PayPal. Please try again.";
@@ -61,24 +57,16 @@ const MonetizationModal: React.FC<MonetizationModalProps> = ({ onClose, onUpgrad
         setIsLoading(true);
         setError(null);
         try {
-            // STEP 2: Call a server-side function to capture the payment.
-            // This function confirms the payment with PayPal. If successful, it updates
-            // the `paypal_orders` table status to 'COMPLETED' and updates the
-            // `users` table to set `is_premium = true`.
-            //
-            // Example of real code:
-            // const { error } = await supabase.functions.invoke('capture-paypal-order', {
-            //     body: { orderID: paypalOrderID },
-            // });
-            // if (error) throw error;
+            // Call server-side function to capture the payment
+            const { data, error } = await supabase.functions.invoke('capture-paypal-order', {
+                body: { orderID: paypalOrderID },
+            });
             
-            // --- SIMULATION ---
-            showToast('Verifying your payment...', 'info');
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network delay
-            console.log("Simulated PayPal order captured:", paypalOrderID);
-            // --- END SIMULATION ---
-
-            // Only if the server-side verification is successful, do we call onUpgrade.
+            if (error) throw error;
+            
+            showToast('Payment verified successfully!', 'success');
+            
+            // Only call onUpgrade if server-side verification is successful
             onUpgrade();
 
         } catch (err: any) {

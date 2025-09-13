@@ -251,7 +251,7 @@ export const getAdminStats = async (): Promise<AdminStats> => {
         const premiumUsers = users?.filter(u => u.is_premium).length || 0;
         const regularUsers = totalUsers - premiumUsers;
 
-        // Get payment records
+        // Get payment records from all completed orders
         const { data: payments, error: paymentsError } = await supabase
             .from('payment_orders')
             .select('*')
@@ -272,7 +272,15 @@ export const getAdminStats = async (): Promise<AdminStats> => {
             status: p.status
         }));
 
-        const totalRevenue = recentPayments.reduce((sum, payment) => sum + payment.amount, 0);
+        // Calculate total revenue from all completed payments
+        const { data: allPayments, error: allPaymentsError } = await supabase
+            .from('payment_orders')
+            .select('amount')
+            .eq('status', 'completed');
+
+        const totalRevenue = (allPayments || []).reduce((sum, payment) => {
+            return sum + parseFloat(payment.amount || '0');
+        }, 0);
 
         return {
             totalUsers,
@@ -283,6 +291,49 @@ export const getAdminStats = async (): Promise<AdminStats> => {
         };
     } catch (error) {
         console.error("Error fetching admin stats:", error);
+        throw error;
+    }
+};
+
+// Payment order management
+export const createPaymentOrder = async (userId: number, amount: number): Promise<{ orderId: string }> => {
+    try {
+        const { data, error } = await supabase
+            .from('payment_orders')
+            .insert({
+                user_id: userId,
+                amount: amount.toString(),
+                status: 'pending',
+                created_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Error creating payment order:", error);
+            throw error;
+        }
+
+        return { orderId: data.id };
+    } catch (error) {
+        console.error("Error creating payment order:", error);
+        throw error;
+    }
+};
+
+export const updatePaymentOrder = async (orderId: string, updates: Partial<PaymentRecord>): Promise<void> => {
+    try {
+        const { error } = await supabase
+            .from('payment_orders')
+            .update(updates)
+            .eq('order_id', orderId);
+
+        if (error) {
+            console.error("Error updating payment order:", error);
+            throw error;
+        }
+    } catch (error) {
+        console.error("Error updating payment order:", error);
         throw error;
     }
 };
