@@ -8,7 +8,18 @@ if (!API_KEY) {
   console.warn("API_KEY not found in environment variables. Gemini features will be disabled.");
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
+// Lazy initialization of the AI client
+let ai: GoogleGenAI | null = null;
+
+const getAI = (): GoogleGenAI => {
+  if (!API_KEY) {
+    throw new Error("Gemini API key not configured.");
+  }
+  if (!ai) {
+    ai = new GoogleGenAI({ apiKey: API_KEY });
+  }
+  return ai;
+};
 
 export const enhanceDateDescription = async (idea: string): Promise<string> => {
   if (!API_KEY) {
@@ -16,7 +27,8 @@ export const enhanceDateDescription = async (idea: string): Promise<string> => {
   }
   
   try {
-    const response = await ai.models.generateContent({
+    const aiInstance = getAI();
+    const response = await aiInstance.models.generateContent({
         model: "gemini-2.5-flash",
         contents: `You are a creative date planner. Take the following simple date idea and turn it into an exciting and descriptive date post of about 50-70 words. Make it sound appealing, romantic, and fun. Do not use hashtags. Date Idea: "${idea}"`,
         config: {
@@ -45,7 +57,7 @@ export const generateFullDateIdea = async (user: User): Promise<{ title: string;
     Generate a complete date idea.`;
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
@@ -84,7 +96,7 @@ export const generateIcebreakers = async (user: User): Promise<string[]> => {
   Return ONLY the JSON object.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
       config: {
@@ -130,7 +142,7 @@ export const getCompatibilityScore = async (currentUser: User, otherUser: User):
     Based on their bios and interests, provide a compatibility score from 0 to 100. Also, provide a short, fun, "vibe check" summary (around 15-25 words) of their potential dynamic. For example: "You both love adventure and spicy food—your dates could be epic! But Carlos is an early bird and you're a night owl, so you might have to compromise on that morning hike."`;
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
@@ -165,7 +177,7 @@ export const getProfileFeedback = async (user: User): Promise<string[]> => {
     `;
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
@@ -201,7 +213,7 @@ export const generateDateIdeas = async (user1: User, user2: User): Promise<DateI
     `;
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
@@ -247,7 +259,7 @@ export const suggestLocations = async (title: string, description: string): Prom
     Return ONLY the JSON object.`;
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
@@ -301,7 +313,7 @@ export const generateChatReplies = async (currentUser: User, otherUser: User, me
     Based on the context, generate exactly 3 short, engaging, and creative replies for ${currentUser.name} to send. The replies should encourage more conversation. Do not just repeat things from the bio.`;
     
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
@@ -347,7 +359,7 @@ export const optimizePhotoOrder = async (photos: string[]): Promise<string[]> =>
     Return a JSON object with the new order of indices. For example, if the best order is the 3rd photo, then the 1st, then the 2nd (from the original order), you should return: { "newOrder": [2, 0, 1] }.`;
     
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: "gemini-2.5-flash",
             contents: { parts: [{ text: prompt }, ...imageParts] },
             config: {
@@ -386,7 +398,7 @@ export const generateAppBackground = async (prompt: string): Promise<string> => 
     if (!API_KEY) throw new Error("Gemini API key not configured.");
 
     try {
-        const response = await ai.models.generateImages({
+        const response = await getAI().models.generateImages({
             model: 'imagen-4.0-generate-001',
             prompt: prompt,
             config: {
@@ -423,7 +435,7 @@ export const categorizeDatePost = async (title: string, description: string): Pr
     Return a JSON object with a "categories" key containing an array of the chosen category strings.`;
     
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
@@ -466,7 +478,7 @@ export const getProfileVibe = async (user: User): Promise<string> => {
   Return only the vibe text.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
         model: "gemini-2.5-flash",
         contents: prompt,
         config: {
@@ -503,7 +515,7 @@ export const getWingmanTip = async (currentUser: User, otherUser: User, messages
     Keep the tip under 15 words. Return only the tip text.`;
     
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {

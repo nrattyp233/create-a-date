@@ -1,5 +1,9 @@
-/* Minimal global styles for Create-A-Date. Tailwind is loaded via CDN; this file prevents 404s and adds a few niceties. */
+/* Tailwind CSS directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* Global styles for Create-A-Date */
 :root {
   --bg-dark-1: #121212;
   --text-light-1: #f5f5f5;
