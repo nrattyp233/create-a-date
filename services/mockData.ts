@@ -10,7 +10,7 @@ export const mockUsers: User[] = [
         photos: ['https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'],
         interests: ['technology', 'management', 'dating'],
         gender: 'male' as const,
-        isPremium: true,
+        isPremium: true, // Admin should be premium
         isAdmin: true,
         preferences: {
             interestedIn: ['female' as const],
