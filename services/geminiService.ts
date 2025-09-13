@@ -2,21 +2,24 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { User, DateIdea, LocationSuggestion, Message, DateCategory } from '../types';
 
 // Ensure you have your API_KEY in the environment variables
-const API_KEY = process.env.API_KEY;
+const API_KEY = process.env.API_KEY || process.env.GEMINI_API_KEY;
 
-if (!API_KEY) {
-  console.warn("API_KEY not found in environment variables. Gemini features will be disabled.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
+// Lazily initialize the AI client to avoid crashing at import time when no key is set
+let aiSingleton: GoogleGenAI | null = null;
+const getAI = (): GoogleGenAI => {
+    if (!API_KEY) {
+        throw new Error("Gemini API key not configured.");
+    }
+    if (!aiSingleton) {
+        aiSingleton = new GoogleGenAI({ apiKey: API_KEY });
+    }
+    return aiSingleton;
+};
 
 export const enhanceDateDescription = async (idea: string): Promise<string> => {
-  if (!API_KEY) {
-    throw new Error("Gemini API key not configured.");
-  }
-  
-  try {
-    const response = await ai.models.generateContent({
+    try {
+        const ai = getAI();
+        const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: `You are a creative date planner. Take the following simple date idea and turn it into an exciting and descriptive date post of about 50-70 words. Make it sound appealing, romantic, and fun. Do not use hashtags. Date Idea: "${idea}"`,
         config: {
@@ -34,7 +37,6 @@ export const enhanceDateDescription = async (idea: string): Promise<string> => {
 };
 
 export const generateFullDateIdea = async (user: User): Promise<{ title: string; description: string; location: string; }> => {
-    if (!API_KEY) throw new Error("Gemini API key not configured.");
 
     const prompt = `You are a creative date planner. Based on this user's profile, generate one unique, creative, and appealing date idea that they could post on a dating app. Provide a catchy title, an exciting description (50-70 words), and a general location type (e.g., 'A cozy cafe', 'A scenic park').
 
@@ -45,6 +47,7 @@ export const generateFullDateIdea = async (user: User): Promise<{ title: string;
     Generate a complete date idea.`;
 
     try {
+        const ai = getAI();
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
@@ -70,10 +73,6 @@ export const generateFullDateIdea = async (user: User): Promise<{ title: string;
 };
 
 export const generateIcebreakers = async (user: User): Promise<string[]> => {
-  if (!API_KEY) {
-    throw new Error("Gemini API key not configured.");
-  }
-
   const prompt = `You are a witty and charming dating assistant. A user has matched with another person. Based on the matched person's profile, generate exactly 3 unique, creative, and personalized icebreakers. The icebreakers should be short (1-2 sentences), engaging, and directly reference their interests or bio. Avoid generic compliments like "you're beautiful".
 
   Matched Person's Profile:
@@ -84,7 +83,8 @@ export const generateIcebreakers = async (user: User): Promise<string[]> => {
   Return ONLY the JSON object.`;
 
   try {
-    const response = await ai.models.generateContent({
+        const ai = getAI();
+        const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
       config: {
@@ -122,14 +122,13 @@ export const generateIcebreakers = async (user: User): Promise<string[]> => {
 };
 
 export const getCompatibilityScore = async (currentUser: User, otherUser: User): Promise<{ score: number; summary: string; }> => {
-    if (!API_KEY) throw new Error("Gemini API key not configured.");
-    
     const prompt = `Analyze the compatibility between these two user profiles for a romantic relationship. 
     User 1: Name: ${currentUser.name}, Bio: "${currentUser.bio}", Interests: ${currentUser.interests.join(', ')}.
     User 2: Name: ${otherUser.name}, Bio: "${otherUser.bio}", Interests: ${otherUser.interests.join(', ')}.
     Based on their bios and interests, provide a compatibility score from 0 to 100. Also, provide a short, fun, "vibe check" summary (around 15-25 words) of their potential dynamic. For example: "You both love adventure and spicy food—your dates could be epic! But Carlos is an early bird and you're a night owl, so you might have to compromise on that morning hike."`;
 
     try {
+        const ai = getAI();
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
@@ -154,8 +153,6 @@ export const getCompatibilityScore = async (currentUser: User, otherUser: User):
 };
 
 export const getProfileFeedback = async (user: User): Promise<string[]> => {
-    if (!API_KEY) throw new Error("Gemini API key not configured.");
-
     const prompt = `You are a friendly and encouraging dating coach. Analyze this user's profile and provide exactly 3 actionable, positive, and constructive tips to improve it. Focus on making the bio more engaging, suggesting photo types, or highlighting interests better.
     User Profile:
     Name: ${user.name}
@@ -165,6 +162,7 @@ export const getProfileFeedback = async (user: User): Promise<string[]> => {
     `;
 
     try {
+        const ai = getAI();
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
@@ -193,14 +191,13 @@ export const getProfileFeedback = async (user: User): Promise<string[]> => {
 };
 
 export const generateDateIdeas = async (user1: User, user2: User): Promise<DateIdea[]> => {
-    if (!API_KEY) throw new Error("Gemini API key not configured.");
-
     const prompt = `You are a creative and thoughtful date planner. Based on the shared and individual interests of these two people, generate 3 unique and fun first date ideas. For each idea, provide a catchy title, a suggested type of location (not a specific address), and a short, exciting description.
     Person 1: Name: ${user1.name}, Interests: ${user1.interests.join(', ')}
     Person 2: Name: ${user2.name}, Interests: ${user2.interests.join(', ')}
     `;
 
     try {
+        const ai = getAI();
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
@@ -237,8 +234,6 @@ export const generateDateIdeas = async (user1: User, user2: User): Promise<DateI
 };
 
 export const suggestLocations = async (title: string, description: string): Promise<LocationSuggestion[]> => {
-    if (!API_KEY) throw new Error("Gemini API key not configured.");
-
     const prompt = `Based on this date idea, suggest 3 to 5 specific, real-sounding (but can be fictional) public locations in a major city. Provide a name and a simple address for each.
 
     Date Title: "${title}"
@@ -247,6 +242,7 @@ export const suggestLocations = async (title: string, description: string): Prom
     Return ONLY the JSON object.`;
 
     try {
+        const ai = getAI();
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
@@ -282,8 +278,6 @@ export const suggestLocations = async (title: string, description: string): Prom
 };
 
 export const generateChatReplies = async (currentUser: User, otherUser: User, messages: Message[]): Promise<string[]> => {
-    if (!API_KEY) throw new Error("Gemini API key not configured.");
-    
     const conversationHistory = messages.slice(-6).map(m => {
         const speaker = m.senderId === currentUser.id ? currentUser.name : otherUser.name;
         return `${speaker}: ${m.text}`;
@@ -301,6 +295,7 @@ export const generateChatReplies = async (currentUser: User, otherUser: User, me
     Based on the context, generate exactly 3 short, engaging, and creative replies for ${currentUser.name} to send. The replies should encourage more conversation. Do not just repeat things from the bio.`;
     
     try {
+        const ai = getAI();
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
@@ -329,8 +324,6 @@ export const generateChatReplies = async (currentUser: User, otherUser: User, me
 };
 
 export const optimizePhotoOrder = async (photos: string[]): Promise<string[]> => {
-    if (!API_KEY) throw new Error("Gemini API key not configured.");
-    
     const imageParts = photos.map(photoDataUrl => {
         const [header, base64Data] = photoDataUrl.split(',');
         const mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
@@ -347,6 +340,7 @@ export const optimizePhotoOrder = async (photos: string[]): Promise<string[]> =>
     Return a JSON object with the new order of indices. For example, if the best order is the 3rd photo, then the 1st, then the 2nd (from the original order), you should return: { "newOrder": [2, 0, 1] }.`;
     
     try {
+        const ai = getAI();
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: { parts: [{ text: prompt }, ...imageParts] },
@@ -383,9 +377,8 @@ export const optimizePhotoOrder = async (photos: string[]): Promise<string[]> =>
 };
 
 export const generateAppBackground = async (prompt: string): Promise<string> => {
-    if (!API_KEY) throw new Error("Gemini API key not configured.");
-
     try {
+        const ai = getAI();
         const response = await ai.models.generateImages({
             model: 'imagen-4.0-generate-001',
             prompt: prompt,
@@ -409,8 +402,6 @@ export const generateAppBackground = async (prompt: string): Promise<string> => 
 };
 
 export const categorizeDatePost = async (title: string, description: string): Promise<DateCategory[]> => {
-    if (!API_KEY) throw new Error("Gemini API key not configured.");
-
     const availableCategories: DateCategory[] = ['Food & Drink', 'Outdoors & Adventure', 'Arts & Culture', 'Nightlife', 'Relaxing & Casual', 'Active & Fitness', 'Adult (18+)'];
     
     const prompt = `Analyze the following date idea and assign it up to two relevant categories from this list: [${availableCategories.join(', ')}].
@@ -423,6 +414,7 @@ export const categorizeDatePost = async (title: string, description: string): Pr
     Return a JSON object with a "categories" key containing an array of the chosen category strings.`;
     
     try {
+        const ai = getAI();
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
@@ -455,8 +447,6 @@ export const categorizeDatePost = async (title: string, description: string): Pr
 };
 
 export const getProfileVibe = async (user: User): Promise<string> => {
-  if (!API_KEY) throw new Error("Gemini API key not configured.");
-
   const prompt = `Based on this user's profile, generate a short, snappy 'vibe' (10-15 words) that summarizes their personality for their dating profile. Make it sound cool and intriguing. Do not use hashtags.
 
   User Profile:
@@ -466,7 +456,8 @@ export const getProfileVibe = async (user: User): Promise<string> => {
   Return only the vibe text.`;
 
   try {
-    const response = await ai.models.generateContent({
+        const ai = getAI();
+        const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: prompt,
         config: {
@@ -483,8 +474,6 @@ export const getProfileVibe = async (user: User): Promise<string> => {
 };
 
 export const getWingmanTip = async (currentUser: User, otherUser: User, messages: Message[]): Promise<string> => {
-    if (!API_KEY) throw new Error("Gemini API key not configured.");
-
     const conversationHistory = messages.slice(-8).map(m => {
         const speaker = m.senderId === currentUser.id ? 'Me' : otherUser.name;
         return `${speaker}: ${m.text}`;
@@ -503,6 +492,7 @@ export const getWingmanTip = async (currentUser: User, otherUser: User, messages
     Keep the tip under 15 words. Return only the tip text.`;
     
     try {
+        const ai = getAI();
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,

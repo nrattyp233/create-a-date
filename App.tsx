@@ -18,6 +18,7 @@ import IcebreakerModal from './components/IcebreakerModal';
 import ProfileFeedbackModal from './components/ProfileFeedbackModal';
 import DatePlannerModal from './components/DatePlannerModal';
 import MonetizationModal from './components/MonetizationModal';
+import AdminStats from './components/AdminStats';
 import Auth from './components/Auth';
 
 // --- START: Onboarding Component ---
@@ -390,7 +391,18 @@ const MainApp: React.FC = () => {
     const handleCloseDatePlanner = () => { setIsDatePlannerModalOpen(false); setTimeout(() => setUsersForDatePlanning(null), 300); };
     const handleOpenMonetizationModal = () => setIsMonetizationModalOpen(true);
     const handleCloseMonetizationModal = () => setIsMonetizationModalOpen(false);
-    const handleUpgradeToPremium = () => { if (currentUser) { handleUpdateProfile({ ...currentUser, isPremium: true }); handleCloseMonetizationModal(); showToast('Congratulations! You are now a Create-A-Date Premium member.', 'success'); } };
+    const handleUpgradeToPremium = async () => {
+        // After server verifies payment, refresh the current user from DB
+        try {
+            const refreshedUsers = await api.getUsers();
+            setUsers(refreshedUsers);
+            showToast('Congratulations! You are now a Create-A-Date Premium member.', 'success');
+        } catch (e) {
+            // Fallback: keep UI as-is; user flag will reflect on next refresh
+        } finally {
+            handleCloseMonetizationModal();
+        }
+    };
     const handleOnboardingComplete = () => { localStorage.setItem('hasOnboarded', 'true'); setShowOnboarding(false); };
 
     const handleSignOut = () => { setIsAuthenticated(false); setCurrentView(View.Swipe); showToast("You've been signed out.", "info"); };
@@ -414,6 +426,11 @@ const MainApp: React.FC = () => {
                 return <MyDatesManager myDates={myDates} allUsers={users} onChooseApplicant={handleChooseApplicant} onDeleteDate={handleDeleteDate} gender={currentUser?.gender} onViewProfile={handleViewProfile} activeColorTheme={activeColorTheme} />;
             case View.Profile:
                 return <ProfileSettings currentUser={currentUser!} onSave={handleUpdateProfile} onGetFeedback={handleGetProfileFeedback} activeColorTheme={activeColorTheme} onSignOut={handleSignOut} onPremiumFeatureClick={handleOpenMonetizationModal} onSetAppBackground={handleSetAppBackground} />;
+            case View.Admin:
+                if (!currentUser?.isAdmin && currentUser?.id?.toString() !== (process.env.ADMIN_USER_ID || '')) {
+                    return <div className="text-center text-red-500">Access denied.</div>;
+                }
+                return <AdminStats />;
             default:
                 return <SwipeDeck users={usersForSwiping} currentUser={currentUser} onSwipe={handleSwipe} onRecall={handleRecall} canRecall={!!lastSwipedUserId} isLoading={isLoading} onPremiumFeatureClick={handleOpenMonetizationModal} weeklyChallenge={weeklyChallenge} onCompleteChallenge={handleCompleteChallenge}/>;
         }
@@ -429,7 +446,12 @@ const MainApp: React.FC = () => {
              style={{ backgroundImage: appBackground ? `linear-gradient(rgba(18, 18, 18, 0.7), rgba(18, 18, 18, 0.7)), url(${appBackground})` : 'none', backgroundColor: '#121212' }}
         >
             {showOnboarding && <OnboardingGuide onFinish={handleOnboardingComplete} />}
-            <Header currentView={currentView} setCurrentView={setCurrentView} activeColorTheme={activeColorTheme} />
+            <Header 
+                currentView={currentView} 
+                setCurrentView={setCurrentView} 
+                activeColorTheme={activeColorTheme}
+                isAdmin={currentUser?.isAdmin || (currentUser?.id?.toString() === (process.env.ADMIN_USER_ID || ''))}
+            />
             <main className="pt-28 pb-10 px-4 container mx-auto">
                 {renderView()}
             </main>
