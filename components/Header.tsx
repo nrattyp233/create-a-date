@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from '../types';
-import { HeartIcon, UserIcon, CalendarIcon, PlusIcon, CogIcon, ChatIcon, ColorTheme } from '../constants';
+import { HeartIcon, UserIcon, CalendarIcon, PlusIcon, CogIcon, ChatIcon, StatsIcon, ColorTheme } from '../constants';
 
 interface HeaderProps {
   currentView: View;
@@ -49,6 +49,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, activeColo
           <NavButton isActive={currentView === View.MyDates} onClick={() => setCurrentView(View.MyDates)} ariaLabel="My dates" activeColor={activeColorTheme.bg} activeGlow={activeColorTheme.glow}>
             <UserIcon className="w-6 h-6" />
           </NavButton>
+          {isAdmin && (
+            <NavButton isActive={currentView === View.Stats} onClick={() => setCurrentView(View.Stats)} ariaLabel="Admin statistics" activeColor={activeColorTheme.bg} activeGlow={activeColorTheme.glow}>
+              <StatsIcon className="w-6 h-6" />
+            </NavButton>
+          )}
            <NavButton isActive={currentView === View.Profile} onClick={() => setCurrentView(View.Profile)} ariaLabel="Profile settings" activeColor={activeColorTheme.bg} activeGlow={activeColorTheme.glow}>
             <CogIcon className="w-6 h-6" />
           </NavButton>

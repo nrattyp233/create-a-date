@@ -1,4 +1,4 @@
-import { User, DatePost, Message } from '../types';
+import { User, DatePost, Message, AdminStats, PaymentRecord } from '../types';
 import { supabase } from './supabaseClient';
 
 // --- READ operations
@@ -230,6 +230,59 @@ export const recallSwipe = async (userId: number, lastSwipedUserId: number): Pro
     
     if (error) {
         console.error("Error recalling swipe:", error);
+        throw error;
+    }
+};
+
+// --- ADMIN operations
+export const getAdminStats = async (): Promise<AdminStats> => {
+    try {
+        // Get total users and premium/regular count
+        const { data: users, error: usersError } = await supabase
+            .from('users')
+            .select('is_premium');
+        
+        if (usersError) {
+            console.error("Error fetching users for stats:", usersError);
+            throw usersError;
+        }
+
+        const totalUsers = users?.length || 0;
+        const premiumUsers = users?.filter(u => u.is_premium).length || 0;
+        const regularUsers = totalUsers - premiumUsers;
+
+        // Get payment records
+        const { data: payments, error: paymentsError } = await supabase
+            .from('payment_orders')
+            .select('*')
+            .eq('status', 'completed')
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (paymentsError && paymentsError.code !== 'PGRST116') { // Table might not exist yet
+            console.error("Error fetching payments for stats:", paymentsError);
+        }
+
+        const recentPayments: PaymentRecord[] = (payments || []).map(p => ({
+            id: p.id,
+            userId: p.user_id,
+            amount: parseFloat(p.amount || '0'),
+            paypalTransactionId: p.paypal_transaction_id || '',
+            createdAt: p.created_at,
+            status: p.status
+        }));
+
+        const totalRevenue = recentPayments.reduce((sum, payment) => sum + payment.amount, 0);
+
+        return {
+            totalUsers,
+            premiumUsers,
+            regularUsers,
+            totalRevenue,
+            recentPayments
+        };
+    } catch (error) {
+        console.error("Error fetching admin stats:", error);
         throw error;
     }
 };

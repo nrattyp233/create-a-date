@@ -13,6 +13,7 @@ import MyDatesManager from './components/MyDatesManager';
 import ProfileSettings from './components/ProfileSettings';
 import MatchesView from './components/MatchesView';
 import ChatView from './components/ChatView';
+import StatsView from './components/StatsView';
 import ProfileModal from './components/ProfileModal';
 import IcebreakerModal from './components/IcebreakerModal';
 import ProfileFeedbackModal from './components/ProfileFeedbackModal';
@@ -414,6 +415,8 @@ const MainApp: React.FC = () => {
                 return <MyDatesManager myDates={myDates} allUsers={users} onChooseApplicant={handleChooseApplicant} onDeleteDate={handleDeleteDate} gender={currentUser?.gender} onViewProfile={handleViewProfile} activeColorTheme={activeColorTheme} />;
             case View.Profile:
                 return <ProfileSettings currentUser={currentUser!} onSave={handleUpdateProfile} onGetFeedback={handleGetProfileFeedback} activeColorTheme={activeColorTheme} onSignOut={handleSignOut} onPremiumFeatureClick={handleOpenMonetizationModal} onSetAppBackground={handleSetAppBackground} />;
+            case View.Stats:
+                return <StatsView activeColorTheme={activeColorTheme} />;
             default:
                 return <SwipeDeck users={usersForSwiping} currentUser={currentUser} onSwipe={handleSwipe} onRecall={handleRecall} canRecall={!!lastSwipedUserId} isLoading={isLoading} onPremiumFeatureClick={handleOpenMonetizationModal} weeklyChallenge={weeklyChallenge} onCompleteChallenge={handleCompleteChallenge}/>;
         }

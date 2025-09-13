@@ -70,5 +70,23 @@ export enum View {
   Matches,
   MyDates,
   Profile,
-  Chat
+  Chat,
+  Stats
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  premiumUsers: number;
+  regularUsers: number;
+  totalRevenue: number;
+  recentPayments: PaymentRecord[];
+}
+
+export interface PaymentRecord {
+  id: string;
+  userId: number;
+  amount: number;
+  paypalTransactionId: string;
+  createdAt: string;
+  status: 'pending' | 'completed' | 'failed';
 }
