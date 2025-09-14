@@ -42,15 +42,17 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, activeColo
           <NavButton isActive={currentView === View.MyDates} onClick={() => setCurrentView(View.MyDates)} ariaLabel="My dates" activeColor={activeColorTheme.bg} activeGlow={activeColorTheme.glow}>
             <UserIcon className="w-6 h-6" />
           </NavButton>
-          <NavButton 
-            isActive={currentView === View.PremiumManager} 
-            onClick={() => setCurrentView(View.PremiumManager)} 
-            ariaLabel={currentUser?.isAdmin ? "Premium manager" : "Premium subscription"} 
-            activeColor={activeColorTheme.bg} 
-            activeGlow={activeColorTheme.glow}
-          >
-            <CrownIcon className="w-6 h-6" />
-          </NavButton>
+          {currentUser?.isAdmin && (
+            <NavButton 
+              isActive={currentView === View.PremiumManager} 
+              onClick={() => setCurrentView(View.PremiumManager)} 
+              ariaLabel="Premium manager" 
+              activeColor={activeColorTheme.bg} 
+              activeGlow={activeColorTheme.glow}
+            >
+              <CrownIcon className="w-6 h-6" />
+            </NavButton>
+          )}
            <NavButton isActive={currentView === View.Profile} onClick={() => setCurrentView(View.Profile)} ariaLabel="Profile settings" activeColor={activeColorTheme.bg} activeGlow={activeColorTheme.glow}>
             <CogIcon className="w-6 h-6" />
           </NavButton>

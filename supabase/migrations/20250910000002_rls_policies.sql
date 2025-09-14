@@ -124,23 +124,16 @@ CREATE POLICY "Users can create their own swipes" ON swipes
 CREATE POLICY "Users can update their own swipes" ON swipes
     FOR UPDATE USING (auth.uid()::text = swiper_id::text);
 
--- ================================================
--- PREMIUM SUBSCRIPTIONS POLICIES
--- ================================================
 
--- Users can view their own premium subscription
 CREATE POLICY "Users can view their own subscription" ON premium_subscriptions
     FOR SELECT USING (auth.uid()::text = user_id::text);
 
--- Users can create their own premium subscription
 CREATE POLICY "Users can create their own subscription" ON premium_subscriptions
     FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
 
--- Users can update their own premium subscription
 CREATE POLICY "Users can update their own subscription" ON premium_subscriptions
     FOR UPDATE USING (auth.uid()::text = user_id::text);
 
--- Admins can view all premium subscriptions
 CREATE POLICY "Admins can view all subscriptions" ON premium_subscriptions
     FOR SELECT USING (
         EXISTS (
@@ -150,7 +143,6 @@ CREATE POLICY "Admins can view all subscriptions" ON premium_subscriptions
         )
     );
 
--- Admins can update any premium subscription
 CREATE POLICY "Admins can update any subscription" ON premium_subscriptions
     FOR UPDATE USING (
         EXISTS (
@@ -160,6 +152,19 @@ CREATE POLICY "Admins can update any subscription" ON premium_subscriptions
         )
     );
 
+-- ================================================
+-- PREMIUM-ONLY FEATURE POLICIES
+-- ================================================
+
+-- Example: Only premium users can access premium_subscriptions table
+CREATE POLICY "Only premium users can access premium features" ON premium_subscriptions
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM users
+            WHERE id::text = auth.uid()::text
+            AND is_premium = true
+        )
+    );
 -- ================================================
 -- FUNCTION TO SET CURRENT USER
 -- ================================================

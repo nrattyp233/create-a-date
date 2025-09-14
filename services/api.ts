@@ -1,6 +1,9 @@
 import { User, DatePost, Message } from '../types';
 import { supabase } from './supabaseClient';
 
+// Determine admin by env email (case-insensitive) or fallback ID 1
+const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL?.toLowerCase?.();
+
 // Helper to ensure user is authenticated
 const ensureAuthenticated = async () => {
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -23,12 +26,17 @@ export const getUsers = async (): Promise<User[]> => {
         });
         throw error;
     }
-    return (data || []).map(u => ({
-        ...u,
-        isPremium: u.is_premium,
-        isAdmin: u.id === 1, // Make user ID 1 the admin
-        earnedBadgeIds: u.earned_badge_ids,
-    }));
+    return (data || []).map(u => {
+        const email = (u.email || '').toLowerCase();
+        // Only lucasnale305@gmail.com is forced admin, others use database value
+        const isAdmin = email === 'lucasnale305@gmail.com' ? true : (u.is_admin || false);
+        return {
+            ...u,
+            isPremium: u.is_premium,
+            isAdmin,
+            earnedBadgeIds: u.earned_badge_ids,
+        } as User;
+    });
 };
 
 export const getDatePosts = async (): Promise<DatePost[]> => {
@@ -161,12 +169,15 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
         });
         throw error;
     }
+    const email = (data.email || '').toLowerCase();
+    // Only lucasnale305@gmail.com is forced admin, others use database value
+    const adminFlag = email === 'lucasnale305@gmail.com' ? true : (data.is_admin || false);
     return {
         ...data,
         isPremium: data.is_premium,
         earnedBadgeIds: data.earned_badge_ids,
-        isAdmin: data.id === 1, // Re-add isAdmin logic
-    };
+        isAdmin: adminFlag,
+    } as User;
 };
 
 export const updateDatePost = async (updatedPost: DatePost): Promise<DatePost> => {

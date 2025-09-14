@@ -6,12 +6,23 @@ import { useToast } from '../contexts/ToastContext';
 interface PremiumManagerProps {
     users: User[];
     onUpdateUser: (updatedUser: User) => void;
+    currentUser?: User;
 }
 
-const PremiumManager: React.FC<PremiumManagerProps> = ({ users, onUpdateUser }) => {
+const PremiumManager: React.FC<PremiumManagerProps> = ({ users, onUpdateUser, currentUser }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState<'all' | 'premium' | 'free'>('all');
     const { showToast } = useToast();
+
+    if (!currentUser?.isAdmin) {
+        return (
+            <div className="max-w-xl mx-auto mt-20 text-center bg-dark-2 border border-dark-3 p-10 rounded-2xl">
+                <CrownIcon className="w-12 h-12 mx-auto mb-4 text-yellow-500" />
+                <h2 className="text-2xl font-bold text-white mb-2">Access Restricted</h2>
+                <p className="text-gray-400">You do not have permission to view this page.</p>
+            </div>
+        );
+    }
 
     const filteredUsers = users.filter(user => {
         const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, User, DatePost, Message, Badge } from './types';
-import { CURRENT_USER_ID, colorThemes, ColorTheme, BADGES, WEEKLY_CHALLENGE_PROMPTS, HeartIcon, CalendarIcon, PlusIcon, ChatIcon } from './constants';
+import { colorThemes, ColorTheme, BADGES, WEEKLY_CHALLENGE_PROMPTS, HeartIcon, CalendarIcon, PlusIcon, ChatIcon } from './constants';
+import { supabase } from './services/supabaseClient';
 import * as api from './services/api';
 import { categorizeDatePost } from './services/geminiService';
 import { useToast, ToastProvider } from './contexts/ToastContext';
@@ -97,6 +98,7 @@ const OnboardingGuide: React.FC<{ onFinish: () => void }> = ({ onFinish }) => {
 const MainApp: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [currentView, setCurrentView] = useState<View>(View.Swipe);
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [datePosts, setDatePosts] = useState<DatePost[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -133,18 +135,31 @@ const MainApp: React.FC = () => {
                 const savedBackground = localStorage.getItem('appBackground');
                 if (savedBackground) setAppBackground(savedBackground);
 
-                const [
-                    fetchedUsers, 
-                    fetchedDatePosts, 
-                    fetchedMessages, 
-                    fetchedMatches,
-                    fetchedSwipedLeftIds,
-                ] = await Promise.all([
-                    api.getUsers(), 
-                    api.getDatePosts(), 
+                // Get auth user first
+                const { data: authData } = await supabase.auth.getUser();
+                const authEmail = authData.user?.email?.toLowerCase();
+
+                const fetchedUsers = await api.getUsers();
+                let resolvedUserId: number | null = null;
+                if (authEmail) {
+                    const matched = fetchedUsers.find(u => (u.email || '').toLowerCase() === authEmail);
+                    if (matched) resolvedUserId = matched.id;
+                }
+                // Fallback: if no match but exactly one user, assume that user
+                if (!resolvedUserId && fetchedUsers.length === 1) resolvedUserId = fetchedUsers[0].id;
+                setCurrentUserId(resolvedUserId);
+
+                if (!resolvedUserId) {
+                    showToast('No user profile found for your email. Please create a user record.', 'error');
+                    setIsLoading(false);
+                    return;
+                }
+
+                const [fetchedDatePosts, fetchedMessages, fetchedMatches, fetchedSwipedLeftIds] = await Promise.all([
+                    api.getDatePosts(),
                     api.getMessages(),
-                    api.getMatches(CURRENT_USER_ID),
-                    api.getSwipedLeftIds(CURRENT_USER_ID)
+                    api.getMatches(resolvedUserId),
+                    api.getSwipedLeftIds(resolvedUserId)
                 ]);
                 setUsers(fetchedUsers);
                 setDatePosts(fetchedDatePosts);
@@ -189,7 +204,16 @@ const MainApp: React.FC = () => {
     }, [currentView]);
 
 
-    const currentUser = useMemo(() => users.find(u => u.id === CURRENT_USER_ID), [users]);
+    const currentUser = useMemo(() => {
+        const user = users.find(u => u.id === currentUserId!);
+        if (!user) return undefined;
+        // Only force isAdmin for lucasnale305@gmail.com
+        if (user.email?.toLowerCase() === 'lucasnale305@gmail.com') {
+            return { ...user, isAdmin: true };
+        }
+        // Otherwise, use the isAdmin value from backend
+        return user;
+    }, [users, currentUserId]);
 
     const matchedUsers = useMemo(() => {
         return users.filter(user => matches.includes(user.id));
@@ -197,15 +221,15 @@ const MainApp: React.FC = () => {
     
     const sentMessageCount = useMemo(() => {
         if (!currentUser || currentUser.isPremium) return 0;
-        return messages.filter(m => m.senderId === CURRENT_USER_ID).length;
-    }, [messages, currentUser]);
+        return messages.filter(m => m.senderId === currentUserId).length;
+    }, [messages, currentUser, currentUserId]);
     
     const FREE_MESSAGE_LIMIT = 20;
 
     const usersForSwiping = useMemo(() => {
         if (!currentUser) return [];
         return users.filter(u => {
-            const isNotCurrentUser = u.id !== CURRENT_USER_ID;
+            const isNotCurrentUser = u.id !== currentUserId;
             const isNotMatched = !matches.includes(u.id);
             const isNotSwipedLeft = !swipedLeftIds.includes(u.id);
             if (!currentUser.preferences) return isNotCurrentUser && isNotMatched && isNotSwipedLeft;
@@ -217,10 +241,10 @@ const MainApp: React.FC = () => {
         });
     }, [users, matches, swipedLeftIds, currentUser]);
     
-    const myDates = datePosts.filter(d => d.createdBy === CURRENT_USER_ID);
+    const myDates = datePosts.filter(d => d.createdBy === currentUserId);
     
     const earnBadge = (badgeId: Badge['id']) => {
-        const user = users.find(u => u.id === CURRENT_USER_ID);
+    const user = users.find(u => u.id === currentUserId);
         if (!user || user.earnedBadgeIds?.includes(badgeId)) {
             return;
         }
@@ -228,7 +252,7 @@ const MainApp: React.FC = () => {
         showToast(`Badge Unlocked: ${BADGES[badgeId].name}!`, 'success');
         const updatedUser = { ...user, earnedBadgeIds: [...(user.earnedBadgeIds || []), badgeId] };
         api.updateUser(updatedUser).then(savedUser => {
-            setUsers(prevUsers => prevUsers.map(u => u.id === CURRENT_USER_ID ? savedUser : u));
+            setUsers(prevUsers => prevUsers.map(u => u.id === currentUserId ? savedUser : u));
         });
     };
 
@@ -357,7 +381,7 @@ const MainApp: React.FC = () => {
         if (messages.filter(m => m.senderId === currentUser.id).length === 4) earnBadge('starter');
         
         try {
-            const newMessage = await api.sendMessage(CURRENT_USER_ID, receiverId, text);
+            const newMessage = await api.sendMessage(currentUserId!, receiverId, text);
             setMessages(prev => [...prev, newMessage]);
         } catch (error) {
             showToast('Failed to send message.', 'error');
@@ -399,13 +423,14 @@ const MainApp: React.FC = () => {
 
     const renderView = () => {
         if (isLoading) return <div className="text-center pt-20 text-xl font-semibold">Loading Create-A-Date...</div>;
-        if (!currentUser && !isLoading) return <div className="text-center text-red-500">Error: Could not load current user data. Please check your Supabase connection and ensure user with ID 1 exists.</div>;
+    if (!currentUserId && !isLoading) return <div className="text-center text-red-500">No matching user profile for your authenticated email. Please ensure a user row exists.</div>;
+    if (!currentUser && !isLoading) return <div className="text-center text-red-500">Error loading current user profile.</div>;
 
         switch (currentView) {
             case View.Swipe:
                 return <SwipeDeck users={usersForSwiping} currentUser={currentUser} onSwipe={handleSwipe} onRecall={handleRecall} canRecall={!!lastSwipedUserId} isLoading={isLoading} onPremiumFeatureClick={handleOpenMonetizationModal} weeklyChallenge={weeklyChallenge} onCompleteChallenge={handleCompleteChallenge} />;
             case View.Dates:
-                return <DateMarketplace datePosts={datePosts} allUsers={users} onToggleInterest={handleToggleInterest} currentUserId={CURRENT_USER_ID} gender={currentUser?.gender} isLoading={isLoading} onViewProfile={handleViewProfile} activeColorTheme={activeColorTheme} />;
+                return <DateMarketplace datePosts={datePosts} allUsers={users} onToggleInterest={handleToggleInterest} currentUserId={currentUserId!} gender={currentUser?.gender} isLoading={isLoading} onViewProfile={handleViewProfile} activeColorTheme={activeColorTheme} />;
             case View.Create:
                 return <CreateDateForm onCreateDate={handleCreateDate} currentUser={currentUser!} activeColorTheme={activeColorTheme} onPremiumFeatureClick={handleOpenMonetizationModal} />;
             case View.Matches:
@@ -419,7 +444,7 @@ const MainApp: React.FC = () => {
             case View.PremiumManager:
                 // Only show admin panel if current user is admin, otherwise show personal premium page
                 return currentUser?.isAdmin 
-                    ? <PremiumManager users={users} onUpdateUser={handleUpdateProfile} />
+                    ? <PremiumManager users={users} onUpdateUser={handleUpdateProfile} currentUser={currentUser} />
                     : <PremiumSubscription currentUser={currentUser!} onUpgrade={handleUpgradeToPremium} />;
             case View.Premium:
                 return <PremiumSubscription currentUser={currentUser!} onUpgrade={handleUpgradeToPremium} />;
